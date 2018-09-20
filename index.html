@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="UTF-8">
+  <title>Visual Regression maintenance!</title>
+</head>
+
+<style>
+  .diff-test-details {
+    width: 40%;
+  }
+
+  img {
+    outline: 2px solid black;
+  }
+
+  button {
+    height: 40px;
+    width: 200px;
+  }
+</style>
+
+<body>
+
+  <div id="container"></div>
+
+  <script>
+    // You can also require other files to run in this process
+    require('./renderer.js')
+    require('babel-register');
+    const glob = require('glob')
+    const fs = require('fs')
+    const path = require('path')
+
+    const diffImages = glob.sync('./screenshots/diff/**/*.png')
+    const baselineImages = glob.sync('./screenshots/baseline/**/*.png')
+    const currentImages = glob.sync('./screenshots/latest/**/*.png')
+
+    diffImages.forEach(diffSrc => {
+      const testData = extractTestDataFromPath(diffSrc)
+      console.log(testData)
+      const diffComparisonElement = buildDiffCompareSection(diffSrc, testData)
+      document.querySelector('#container').appendChild(diffComparisonElement)
+    })
+
+    document.querySelector('#accept').addEventListener('click', event => {
+      const container = event.target.parentElement
+      console.log(container)
+      const latestPath = generateScreenshotPathForType(container, 'latest')
+      const baselinePath = generateScreenshotPathForType(container, 'baseline')
+      const diffPath = generateScreenshotPathForType(container, 'diff')
+      fs.rename(latestPath, baselinePath, err => {
+        if (err) throw err;
+        else {
+          deleteFile(diffPath)
+        }
+      })
+
+    })
+
+    document.querySelector('#reject').addEventListener('click', event => {
+      const container = event.target.parentElement
+      const latestPath = generateScreenshotPathForType(container, 'latest')
+      const diffPath = generateScreenshotPathForType(container, 'diff')
+      deleteFile(diffPath)
+      deleteFile(latestPath)
+    })
+
+    function buildDiffCompareSection(diffSrc, testData) {
+      baselineSrc = diffSrc.replace('diff', 'baseline')
+      latestSrc = diffSrc.replace('diff', 'latest')
+
+      const diffSection = document.createElement('div')
+      diffSection.setAttribute("data-component", testData.component)
+      diffSection.setAttribute("data-title", testData.title)
+      diffSection.setAttribute("data-browser", testData.browser)
+      diffSection.setAttribute("data-breakpoint", testData.breakpoint)
+      diffSection.setAttribute("data-filename", testData.fileName)
+      diffSection.set
+      diffSection.innerHTML = `
+        <div class="diff-test-details">
+          <h1>Component: ${testData.component}</h1>
+          <h2>Test: ${testData.title}</h2>
+          <h2>Browser: ${testData.browser} -- ${testData.breakpoint}</h2>
+        </div>
+        <section>
+        <p>Baseline image</p><img src='${baselineSrc}'>
+        <p>Latest image</p><img src='${latestSrc}'>
+        <p>Diff</p><img src='${diffSrc}'>
+        </section>
+        <div class="buttons">
+          <button id="accept">Accept</button>
+          <button id="reject">Reject</button>
+        </div>
+    `
+      return diffSection
+    }
+
+    function extractTestDataFromPath(path) {
+      const splitPath = path.split('/')
+      const splitTestDetails = splitPath[5].split('_')
+      return {
+        component: splitPath[3],
+        breakpoint: splitPath[4],
+        fileName: splitPath[5],
+        browser: splitTestDetails[1],
+        title: splitTestDetails[0]
+      }
+    }
+
+
+    //type must be a String of 'latest', 'diff', or 'baseline'
+    function generateScreenshotPathForType(container, type) {
+
+      console.log(container.getAttribute('data-component'))
+
+      return path.join(
+        process.cwd(),
+        './screenshots',
+        type,
+        container.getAttribute('data-component'),
+        container.getAttribute('data-breakpoint'),
+        container.getAttribute('data-filename')
+      )
+    }
+
+    function deleteFile(filepath) {
+      fs.exists(filepath, function (exists) {
+        if (exists) {
+          // File exists deletings
+          fs.unlink(filepath, function (err) {
+            if (err) {
+              alert("An error ocurred updating the file" + err.message);
+              console.log(err);
+              return;
+            }
+          });
+        } else {
+          alert("This file doesn't exist, cannot delete");
+        }
+      });
+    }
+
+  </script>
+</body>
+
+</html>
