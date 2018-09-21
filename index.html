@@ -3,32 +3,82 @@
 
 <head>
   <meta charset="UTF-8">
-  <title>Visual Regression maintenance!</title>
+  <title>Visual Regression App</title>
 </head>
 
 <style>
+  #sidebar {
+    border-right: 3px solid black;
+    height: 100vh;
+    flex: 25%;
+  }
+
+  #detailedView {
+    width: 80%;
+    height: 100vh;
+    margin-top: 10px;
+    margin-left: 100px;
+  }
+
+  #container {
+    display: flex;
+    margin-top: -5px;
+    margin-left: -4px;
+  }
+
+  p {
+    font-size: 16px;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  }
+
+  #detailedView p {
+    font-weight: bold
+  }
+
   .diff-test-details {
-    width: 40%;
+    margin-top: -17px;
+    border-bottom: 2px solid black;
+  }
+
+  .diff-test-details:hover {
+    background-color: lightskyblue;
+  }
+
+  .active {
+    background-color: lightskyblue;
   }
 
   img {
-    outline: 2px solid black;
+    outline: 1px solid black;
+    height: 10vm;
+    width: 40vm;
+
   }
 
   button {
     height: 40px;
     width: 200px;
+    margin: 20px;
+  }
+
+  .buttons {
+    display: flex;
+    width: 80%;
+    justify-content: space-evenly;
   }
 </style>
 
 <body>
-
-  <div id="container"></div>
+  <div id="container">
+    <div id="sidebar"></div>
+    <div id="detailedView"></div>
+  </div>
+  <div id="accept"></div>
+  <div id="reject"></div>
 
   <script>
     // You can also require other files to run in this process
     require('./renderer.js')
-    require('babel-register');
     const glob = require('glob')
     const fs = require('fs')
     const path = require('path')
@@ -37,13 +87,25 @@
     const baselineImages = glob.sync('./screenshots/baseline/**/*.png')
     const currentImages = glob.sync('./screenshots/latest/**/*.png')
 
+
+    //Generate the content for the side nav and display sections
     diffImages.forEach(diffSrc => {
       const testData = extractTestDataFromPath(diffSrc)
       console.log(testData)
-      const diffComparisonElement = buildDiffCompareSection(diffSrc, testData)
-      document.querySelector('#container').appendChild(diffComparisonElement)
+      const diffComparisonBlock = buildDiffCompareSideNavElement(diffSrc, testData)
+      diffComparisonBlock.addEventListener('click', event => {
+        const diffElement = event.target
+        document.querySelector('#detailedView').innerHTML = buildDiffCompareSection(diffSrc)
+      })
+
+      document.querySelector('#sidebar').appendChild(diffComparisonBlock)
     })
 
+    function generateDiffDetailsOnClick(element) {
+      return
+    }
+
+    //Accept new baseline event
     document.querySelector('#accept').addEventListener('click', event => {
       const container = event.target.parentElement
       console.log(container)
@@ -59,6 +121,7 @@
 
     })
 
+    //Reject baseline event
     document.querySelector('#reject').addEventListener('click', event => {
       const container = event.target.parentElement
       const latestPath = generateScreenshotPathForType(container, 'latest')
@@ -67,11 +130,13 @@
       deleteFile(latestPath)
     })
 
-    function buildDiffCompareSection(diffSrc, testData) {
+
+    function buildDiffCompareSideNavElement(diffSrc, testData) {
       baselineSrc = diffSrc.replace('diff', 'baseline')
       latestSrc = diffSrc.replace('diff', 'latest')
 
       const diffSection = document.createElement('div')
+      diffSection.setAttribute("class", "diff-test-details")
       diffSection.setAttribute("data-component", testData.component)
       diffSection.setAttribute("data-title", testData.title)
       diffSection.setAttribute("data-browser", testData.browser)
@@ -79,22 +144,28 @@
       diffSection.setAttribute("data-filename", testData.fileName)
       diffSection.set
       diffSection.innerHTML = `
-        <div class="diff-test-details">
-          <h1>Component: ${testData.component}</h1>
-          <h2>Test: ${testData.title}</h2>
-          <h2>Browser: ${testData.browser} -- ${testData.breakpoint}</h2>
+          <p>Component: ${testData.component}</p>
+          <p>Test: ${testData.title}</p>
+          <p>Browser: ${testData.browser} -- ${testData.breakpoint}</p>
         </div>
-        <section>
-        <p>Baseline image</p><img src='${baselineSrc}'>
-        <p>Latest image</p><img src='${latestSrc}'>
-        <p>Diff</p><img src='${diffSrc}'>
-        </section>
-        <div class="buttons">
-          <button id="accept">Accept</button>
-          <button id="reject">Reject</button>
-        </div>
+      
     `
       return diffSection
+    }
+
+    function buildDiffCompareSection(diffSrc) {
+      const paths = getScreenshotPaths(diffSrc)
+      return `
+          <div class="comparison-layout">
+          <p>Baseline image</p><img src='${paths.baseline}'>
+          <p>Latest image</p><img src='${paths.latest}'>
+          <p>Diff</p><img src='${paths.diff}'>
+          </div>
+          <div class="buttons">
+            <button id="accept">Accept</button>
+            <button id="reject">Reject</button>
+          </div>
+          `
     }
 
     function extractTestDataFromPath(path) {
@@ -106,6 +177,14 @@
         fileName: splitPath[5],
         browser: splitTestDetails[1],
         title: splitTestDetails[0]
+      }
+    }
+
+    function getScreenshotPaths(diffSrc) {
+      return {
+        baseline: diffSrc.replace('diff', 'baseline'),
+        latest: diffSrc.replace('diff', 'latest'),
+        diff: diffSrc
       }
     }
 
