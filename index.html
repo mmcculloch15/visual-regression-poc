@@ -73,8 +73,6 @@
     <div id="sidebar"></div>
     <div id="detailedView"></div>
   </div>
-  <div id="accept"></div>
-  <div id="reject"></div>
 
   <script>
     // You can also require other files to run in this process
@@ -96,39 +94,36 @@
       diffComparisonBlock.addEventListener('click', event => {
         const diffElement = event.target
         document.querySelector('#detailedView').innerHTML = buildDiffCompareSection(diffSrc)
+        addButtonEventListeners()
       })
 
       document.querySelector('#sidebar').appendChild(diffComparisonBlock)
     })
 
-    function generateDiffDetailsOnClick(element) {
-      return
-    }
 
-    //Accept new baseline event
-    document.querySelector('#accept').addEventListener('click', event => {
-      const container = event.target.parentElement
-      console.log(container)
-      const latestPath = generateScreenshotPathForType(container, 'latest')
-      const baselinePath = generateScreenshotPathForType(container, 'baseline')
-      const diffPath = generateScreenshotPathForType(container, 'diff')
-      fs.rename(latestPath, baselinePath, err => {
-        if (err) throw err;
-        else {
-          deleteFile(diffPath)
-        }
+    function addButtonEventListeners() {
+      //Accept new baseline event
+      document.querySelector('#accept').addEventListener('click', event => {
+        const container = event.target.parentElement
+        const paths = getScreenshotPaths(event.target.parentElement.getAttribute("data-src"))
+        fs.rename(paths.latest, paths.baseline, err => {
+          if (err) throw err;
+          else {
+            deleteFile(paths.diff)
+          }
+        })
+
       })
 
-    })
+      //Reject baseline event
+      document.querySelector('#reject').addEventListener('click', event => {
+        console.log(event.target.parentElement)
 
-    //Reject baseline event
-    document.querySelector('#reject').addEventListener('click', event => {
-      const container = event.target.parentElement
-      const latestPath = generateScreenshotPathForType(container, 'latest')
-      const diffPath = generateScreenshotPathForType(container, 'diff')
-      deleteFile(diffPath)
-      deleteFile(latestPath)
-    })
+        const paths = getScreenshotPaths(event.target.parentElement.getAttribute("data-src"))
+        deleteFile(paths.diff)
+        deleteFile(paths.latest)
+      })
+    }
 
 
     function buildDiffCompareSideNavElement(diffSrc, testData) {
@@ -156,14 +151,12 @@
     function buildDiffCompareSection(diffSrc) {
       const paths = getScreenshotPaths(diffSrc)
       return `
-          <div class="comparison-layout">
+          <div class="comparison-layout" data-src='${diffSrc}'>
           <p>Baseline image</p><img src='${paths.baseline}'>
           <p>Latest image</p><img src='${paths.latest}'>
           <p>Diff</p><img src='${paths.diff}'>
-          </div>
-          <div class="buttons">
-            <button id="accept">Accept</button>
-            <button id="reject">Reject</button>
+          <button id="accept">Accept</button>
+          <button id="reject">Reject</button>
           </div>
           `
     }
